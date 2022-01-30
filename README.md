@@ -66,8 +66,7 @@ python TRAINING-ENN.py
 ## Train/Test with k-means initialization  
 
 - First run TRAINING-ENN_(step1).py to train the RBF/ENN layer only by fixing UNEt.
-- Then run TRAINING-ENN_(step2).py to finetune the whole model with the pre-trained model on step 1.   
-  -
+- Then run TRAINING-ENN_(step2).py to finetune the whole model with the pre-trained model on step 1.  
 ```bash
 python TRAINING-ENN_(step1).py
 python TRAINING-ENN_(step2).py
