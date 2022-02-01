@@ -4,10 +4,8 @@ Code for paper "Lymphoma segmentation from 3D PET-CT images using a deep evident
 
 
 # ES-UNet
-This repo contains the supported pytorch code and configuration files to reproduce 3D lymphoma segmentaion results of [ES-UNet](). 
+This repo contains the supported pytorch code and configuration files to reproduce 3D lymphoma segmentaion results of [ENN-UNet and RBF-UNet](https://arxiv.org/abs/2201.13078). 
 
-
-![ES-UNet Architecture](img/architecture.png?raw=true)
 
 ## Environment
 Prepare an environment with python=3.7, and then run the command "pip install -r requirements.txt" for the dependencies.
