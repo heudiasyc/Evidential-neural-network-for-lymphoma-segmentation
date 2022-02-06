@@ -83,13 +83,11 @@ This repository makes liberal use of code from [DeepOncology](https://github.com
   year={2021}
 }
 
-@misc{huang2022lymphoma,
-    title={Lymphoma segmentation from 3D PET-CT images using a deep evidential network},
-    author={Ling Huang and Su Ruan and Pierre Decazes and Thierry Denoeux},
-    year={2022},
-    eprint={2201.13078},
-    archivePrefix={arXiv},
-    primaryClass={cs.CV}
+@article{huang2022lymphoma,
+  title={Lymphoma segmentation from 3D PET-CT images using a deep evidential network},
+  author={Huang, Ling and Ruan, Su and Decazes, Pierre and Denoeux, Thierry},
+  journal={arXiv preprint arXiv:2201.13078},
+  year={2022}
 }
 
 
