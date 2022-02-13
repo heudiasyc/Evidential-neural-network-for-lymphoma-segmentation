@@ -41,7 +41,6 @@ class RBF_KMEANS(nn.Module):
     def reset_parameters(self,prototype):
         with torch.no_grad():
             self.P.copy_(prototype)
-        nn.init.normal_(self.P)
         nn.init.normal_(self.V)
         nn.init.constant_(self.gamm, 0.1)
 
