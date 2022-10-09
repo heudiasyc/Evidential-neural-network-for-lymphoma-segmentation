@@ -76,18 +76,24 @@ This repository makes liberal use of code from [DeepOncology](https://github.com
 
 ## Citing ES-UNet
 ```bash
-@article{huang2021evidential,
+@inproceedings{huang2021evidential,
   title={Evidential segmentation of 3D PET/CT images},
-  author={Huang, Ling and Ruan, Su and Decazes, Pierre and Denoeux, Thierry},
-  journal={arXiv preprint arXiv:2104.13293},
-  year={2021}
+  author={Huang, L. and Ruan, S. and Decazes, P. and Den{\oe}ux, T.},
+  booktitle={International Conference on Belief Functions},
+  pages={159--167},
+  year={2021},
+  organization={Springer}
 }
 
 @article{huang2022lymphoma,
-  title={Lymphoma segmentation from 3D PET-CT images using a deep evidential network},
-  author={Huang, Ling and Ruan, Su and Decazes, Pierre and Denoeux, Thierry},
-  journal={arXiv preprint arXiv:2201.13078},
-  year={2022}
+title = {Lymphoma segmentation from 3D PET-CT images using a deep evidential network},
+journal = {International Journal of Approximate Reasoning},
+volume = {149},
+pages = {39-60},
+year = {2022},
+issn = {0888-613X},
+doi = {https://doi.org/10.1016/j.ijar.2022.06.007},
+author = {Ling Huang and Su Ruan and Pierre Decazes and Thierry Denoeux}
 }
 
 
