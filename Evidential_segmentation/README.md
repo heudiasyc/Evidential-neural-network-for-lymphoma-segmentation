@@ -57,14 +57,14 @@ python TRAINING-ENN.py
 - First, we need to trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model/ folder)
 - Second, we use the pre-trained UNet to calculate the initialized value of prototypes by the k-means algorithm. (Here, we offer an initialization value of prototypes that are calculted by K-means, ./Center-kmeans.txt)
 - Third, change to the path to the pre-trained baseline model UNet in TRAINING-ENN_(step1).py  (line 109)
-- Fourth, run TRAINING-ENN_(step1).py to train the ENN layer only by fixing UNet (activate lines 263-264 in une_enn_kmeans.py).
+- Fourth, run following code to train the ENN layer only by fixing UNet (activate lines 263-264 in une_enn_kmeans.py).
 ```bash
 python TRAINING-ENN_(step1).py
 ```
-- Last, run TRAINING-ENN_(step2).py to finetune the whole model with the pre-trained model from step 1 (activate lines 263-264 in une_enn_kmeans.py to disable gradient update for Unet).   
+- Last, run following code to finetune the whole model with the pre-trained model from step 1 (deactivate lines 263-264 in une_enn_kmeans.py to disable gradient update for Unet).   
 
 ```bash
-python TRAINING-ENN_(step2).py (nute lines 263-264 in une-enn-kmeans.py to enable gradient update). 
+python TRAINING-ENN_(step2).py
 ```
 
 ## Acknowledgements
