@@ -1,15 +1,14 @@
-torch=1.4.0
+torch==1.4.0
 torchvision
 tensorboard
 pyyaml
 yacs
 einops
 SimpleITK
-monai=0.3.0
+monai==0.3.0
 mmcv
 timm
 pandas
 numpy
 scikit-image
 fvcore
-glob

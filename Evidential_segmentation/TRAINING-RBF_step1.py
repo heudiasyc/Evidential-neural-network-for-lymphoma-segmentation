@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import monai
-from monai.networks.nets import UNet,UNet_RBF
+from monai.networks.nets import UNet,VNet,DynUNet,UNet_RBF,UNet_RBF_KMEANS
 from monai.networks.utils import one_hot
 from monai.transforms import (
     AsDiscrete,
@@ -72,7 +72,6 @@ val_transforms = Compose(
     [  # read img + meta info
         LoadNifti(keys=["pet_img", "ct_img", "mask_img"]),
         Sitk2Numpy(keys=['pet_img', 'ct_img', 'mask_img']),
-
         # Prepare for neural network
         ConcatModality(keys=['pet_img', 'ct_img']),
         AddChanneld(keys=["mask_img"]),  # Add channel to the first axis
@@ -82,8 +81,7 @@ val_transforms = Compose(
 
 ##################loading data###############################
 
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
-
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 base_path="/home/lab/hualing/2.5_SUV_dilation" #####the path you put the pre_processed data.
 pet_path = base_path + '/' + 'pet_test'
@@ -92,9 +90,9 @@ mask_path = base_path + '/' + 'pet_test_mask'
 PET_ids = sorted(glob(os.path.join(pet_path, '*pet.nii')))
 CT_ids = sorted(glob(os.path.join(ct_path, '*ct.nii')))
 MASK_ids = sorted(glob(os.path.join(mask_path, '*mask.nii')))
-
 data_dicts= zip(PET_ids, CT_ids, MASK_ids)
 files=list(data_dicts)
+
 
 
 train_files = [{"pet_img": PET, "ct_img": CT, 'mask_img': MASK} for  PET, CT, MASK in files[:138]]
@@ -108,7 +106,7 @@ test_ds = monai.data.Dataset(data=test_files,transform=val_transforms)
 
 train_loader = DataLoader(
         train_ds,
-        batch_size=3,
+        batch_size=5,
         shuffle=True,
         num_workers=4,
         collate_fn=list_data_collate,
@@ -117,9 +115,12 @@ train_loader = DataLoader(
 val_loader = DataLoader(val_ds, batch_size=1, num_workers=4, collate_fn=list_data_collate)
 test_loader = DataLoader(test_ds, batch_size=1, num_workers=4, collate_fn=list_data_collate)
 
-###################################### define model#######################################
+
+###################################### defining model#######################################
+
+
 trained_model_path="./pre-trained_model/best_metric_model_unet.pth"  ####path to the pre-trained UNET model
-model = UNet_RBF(
+model =UNet_RBF_KMEANS(
         dimensions=3,  # 3D
         in_channels=2,
         out_channels=2,
@@ -134,16 +135,17 @@ model_dict.update(pre_dict)
 
 model.load_state_dict(model_dict)
 
-####code to make sure only the parameters from ENN are optimized
+
 for name, param in model.named_parameters():
     if param.requires_grad==True:
         print(name)
-####code to make sure only the parameters from ENN are optimized
-params = filter(lambda p: p.requires_grad, model.parameters())
+params = filter(lambda p: p.requires_grad, model.parameters()) ####code to make sure only the parameters from ENN are optimized
+
+
+
 optimizer = torch.optim.Adam(params, 1e-2)
 dice_metric = monai.metrics.DiceMetric( include_background=False,reduction="mean")
 scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min',patience=10)
-
 loss_function = monai.losses.DiceLoss(include_background=False,softmax=False,squared_pred=True,to_onehot_y=True)
 
 
@@ -162,22 +164,24 @@ post_label = AsDiscrete(to_onehot=True, n_classes=2)
 
 #############################################   training and validation#############################################
 
+
 for epoch in range(100):
     print("-" * 10)
     print(f"epoch {epoch + 1}/{100}")
     model.train()
     epoch_loss = 0
     step = 0
+    #scheduler = StepLR(optimizer, step_size=50, gamma=0.1)
     for batch_data in train_loader:
         step += 1
         inputs, labels = batch_data["image"].to(device), batch_data["mask_img"].to(device)
         optimizer.zero_grad()
-        pm,mass = model(inputs)
+        pm,mass= model(inputs)
 
-        loss=loss_function(pm, labels)
+        dice_loss=loss_function(pm, labels)
+        loss = dice_loss
         loss.backward()
         optimizer.step()
-
         epoch_loss += loss.item()
         epoch_len = len(train_ds) // train_loader.batch_size
         print(f"{step}/{epoch_len}, train_loss: {loss.item():.4f}")
@@ -185,7 +189,6 @@ for epoch in range(100):
     epoch_loss /= step
     epoch_loss_values.append(epoch_loss)
     print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
-
     scheduler.step(epoch_loss)
     if (epoch + 1) % val_interval == 0:
         model.eval()
@@ -193,13 +196,16 @@ for epoch in range(100):
             metric_sum = 0.0
             metric_count = 0
 
+            val_images = None
+            val_labels = None
+            val_outputs = None
             for val_data in val_loader:
                 val_images, val_labels = val_data["image"].to(device), val_data["mask_img"].to(device)
+
                 pm,mass = model(val_images)
                 val_outputs=pm
                 output=pm
                 value = dice_metric(y_pred=val_outputs, y=val_labels)
-
                 metric_count += len(value)
                 metric_sum += value.item() * len(value)
             
@@ -209,12 +215,15 @@ for epoch in range(100):
             if metric > best_metric:
                 best_metric = metric
                 best_metric_epoch = epoch + 1
-                torch.save(model.state_dict(), "RBF_best_metric_model_segmentation3d_dict.pth")
+                torch.save(model.state_dict(), "RBF_best_metric_model_segmentation3d_dict_step1.pth")
                 print("saved new best metric model")
             print(
                 "current epoch: {} current mean dice: {:.4f} best mean dice: {:.4f} at epoch {}".format(
                     epoch + 1, metric, best_metric, best_metric_epoch
                 )
             )
+
 print(f"train completed, best_metric: {best_metric:.4f} at epoch: {best_metric_epoch}")
 writer.close()
+
+

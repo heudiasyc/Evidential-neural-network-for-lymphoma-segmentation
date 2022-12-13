@@ -74,15 +74,14 @@ class RBF(nn.Module):
 
         kapa_c=(1-torch.exp(-w_pc))*(1-torch.exp(-w_nc))
         kapa = 1 / (1 - kapa_c)
-        mass1=(1-torch.exp(-w_pc))*torch.exp(-w_nc)
-        mass1=kapa*mass1
-        mass2=(1-torch.exp(-w_nc))*torch.exp(-w_pc)
-        mass2=kapa*mass2
-        mass_omega=torch.exp(-w_pc-w_nc)
-        mass_omega=mass_omega*kapa
+        mass1=kapa*(1-torch.exp(-w_pc))*torch.exp(-w_nc)
+        mass2=kapa*(1-torch.exp(-w_nc))*torch.exp(-w_pc)
+        mass_omega=kapa*torch.exp(-w_pc-w_nc)
+
         mass_all = torch.cat((mass1.unsqueeze(1),mass2.unsqueeze(1),mass_omega.unsqueeze(1)), 1)
 
         return pm,mass_all
+
 
 class UNet_RBF(nn.Module):
     def __init__(
@@ -167,6 +166,8 @@ class UNet_RBF(nn.Module):
             #return nn.Sequential(down, SkipConnection(subblock))
 
         self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
+        for p in self.parameters():
+            p.requires_grad=False
         self.rbf = RBF(2,2,10)
     def _get_down_layer(
         self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> Union[ResidualUnit, Convolution]:

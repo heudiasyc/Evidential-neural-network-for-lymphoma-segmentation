@@ -2,14 +2,13 @@
 # coding: utf-8
 
 # In[]:
-
 ###########################  IMPORTS   ############################################# 
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import monai
-from monai.networks.nets import UNet,UNet_RBF
+from monai.networks.nets import UNet,VNet,DynUNet,UNet_ENN_KMEANS
 from monai.networks.utils import one_hot
 from monai.transforms import (
     AsDiscrete,
@@ -54,15 +53,10 @@ from class_modalities.transforms import LoadNifti, Roi2Mask, ResampleReshapeAlig
 from monai.utils import first, set_determinism
 
 
-
-##################
 train_transforms = Compose(
     [  # read img + meta info
         LoadNifti(keys=["pet_img", "ct_img", "mask_img"]),
         Sitk2Numpy(keys=['pet_img', 'ct_img', 'mask_img']),
-        # user can also add other random transforms
-
-        # Prepare for neural network
         ConcatModality(keys=['pet_img', 'ct_img']),
         AddChanneld(keys=["mask_img"]),  # Add channel to the first axis
         ToTensord(keys=["image", "mask_img"]),
@@ -72,27 +66,20 @@ val_transforms = Compose(
     [  # read img + meta info
         LoadNifti(keys=["pet_img", "ct_img", "mask_img"]),
         Sitk2Numpy(keys=['pet_img', 'ct_img', 'mask_img']),
-
-        # Prepare for neural network
         ConcatModality(keys=['pet_img', 'ct_img']),
         AddChanneld(keys=["mask_img"]),  # Add channel to the first axis
         ToTensord(keys=["image", "mask_img"]),
     ])
 
 
-##################loading data###############################
-
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
-
-
-base_path="/home/lab/hualing/2.5_SUV_dilation" #####the path you put the pre_processed data.
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+base_path="/home/lab/hualing/2.5_SUV_dilation"
 pet_path = base_path + '/' + 'pet_test'
 ct_path = base_path + '/' + 'ct_test'
 mask_path = base_path + '/' + 'pet_test_mask'
 PET_ids = sorted(glob(os.path.join(pet_path, '*pet.nii')))
 CT_ids = sorted(glob(os.path.join(ct_path, '*ct.nii')))
 MASK_ids = sorted(glob(os.path.join(mask_path, '*mask.nii')))
-
 data_dicts= zip(PET_ids, CT_ids, MASK_ids)
 files=list(data_dicts)
 
@@ -108,7 +95,7 @@ test_ds = monai.data.Dataset(data=test_files,transform=val_transforms)
 
 train_loader = DataLoader(
         train_ds,
-        batch_size=3,
+        batch_size=6,
         shuffle=True,
         num_workers=4,
         collate_fn=list_data_collate,
@@ -117,9 +104,9 @@ train_loader = DataLoader(
 val_loader = DataLoader(val_ds, batch_size=1, num_workers=4, collate_fn=list_data_collate)
 test_loader = DataLoader(test_ds, batch_size=1, num_workers=4, collate_fn=list_data_collate)
 
-###################################### define model#######################################
-trained_model_path="./pre-trained_model/best_metric_model_unet.pth"  ####path to the pre-trained UNET model
-model = UNet_RBF(
+
+trained_model_path="./ENN_best_metric_model_segmentation3d_dict_step1.pth" #####path to the ENN model after step 1
+model = UNet_ENN_KMEANS(
         dimensions=3,  # 3D
         in_channels=2,
         out_channels=2,
@@ -133,22 +120,19 @@ pre_dict = {k: v for k, v in pre_dict.items() if k in model_dict}
 model_dict.update(pre_dict)
 
 model.load_state_dict(model_dict)
-
-####code to make sure only the parameters from ENN are optimized
+params = filter(lambda p: p.requires_grad, model.parameters())
 for name, param in model.named_parameters():
     if param.requires_grad==True:
-        print(name)
-####code to make sure only the parameters from ENN are optimized
-params = filter(lambda p: p.requires_grad, model.parameters())
-optimizer = torch.optim.Adam(params, 1e-2)
+        print(name)  ####code to make sure the parameters from the whole model are optimized
+
+optimizer = torch.optim.Adam(params, 1e-4)      ####finetune the whole models
+
 dice_metric = monai.metrics.DiceMetric( include_background=False,reduction="mean")
 scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min',patience=10)
-
 loss_function = monai.losses.DiceLoss(include_background=False,softmax=False,squared_pred=True,to_onehot_y=True)
 
 
 # TODO : generate a learning rate scheduler
-
 val_interval = 1
 best_metric = -1
 best_metric_epoch = -1
@@ -160,7 +144,6 @@ post_pred = AsDiscrete(argmax=True, to_onehot=True, n_classes=2)
 post_label = AsDiscrete(to_onehot=True, n_classes=2)
 
 
-#############################################   training and validation#############################################
 
 for epoch in range(100):
     print("-" * 10)
@@ -172,12 +155,15 @@ for epoch in range(100):
         step += 1
         inputs, labels = batch_data["image"].to(device), batch_data["mask_img"].to(device)
         optimizer.zero_grad()
-        pm,mass = model(inputs)
+        outputs = model(inputs)
 
-        loss=loss_function(pm, labels)
+        output=outputs[:, :2, :, :, :]+0.5*outputs[:, 2, :, :, :].unsqueeze(1)
+        dice_loss=loss_function(output, labels)
+
+
+        loss = dice_loss
         loss.backward()
         optimizer.step()
-
         epoch_loss += loss.item()
         epoch_len = len(train_ds) // train_loader.batch_size
         print(f"{step}/{epoch_len}, train_loss: {loss.item():.4f}")
@@ -185,36 +171,153 @@ for epoch in range(100):
     epoch_loss /= step
     epoch_loss_values.append(epoch_loss)
     print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
-
     scheduler.step(epoch_loss)
     if (epoch + 1) % val_interval == 0:
         model.eval()
         with torch.no_grad():
             metric_sum = 0.0
+
             metric_count = 0
 
+            val_images = None
+            val_labels = None
+            val_outputs = None
             for val_data in val_loader:
                 val_images, val_labels = val_data["image"].to(device), val_data["mask_img"].to(device)
-                pm,mass = model(val_images)
-                val_outputs=pm
-                output=pm
+                output = model(val_images)
+                val_outputs = output[:, :2, :, :, :]+0.5*output[:, 2, :, :, :].unsqueeze(1)
+                
                 value = dice_metric(y_pred=val_outputs, y=val_labels)
 
                 metric_count += len(value)
                 metric_sum += value.item() * len(value)
+
             
             metric = metric_sum / metric_count
             metric_values.append(metric)
-
             if metric > best_metric:
                 best_metric = metric
                 best_metric_epoch = epoch + 1
-                torch.save(model.state_dict(), "RBF_best_metric_model_segmentation3d_dict.pth")
+                torch.save(model.state_dict(), "ENN_best_metric_model_segmentation3d_dict_step2.pth")
                 print("saved new best metric model")
             print(
                 "current epoch: {} current mean dice: {:.4f} best mean dice: {:.4f} at epoch {}".format(
                     epoch + 1, metric, best_metric, best_metric_epoch
                 )
             )
+
 print(f"train completed, best_metric: {best_metric:.4f} at epoch: {best_metric_epoch}")
 writer.close()
+
+
+
+# LEARNING PROCEDURE
+
+
+model.load_state_dict(torch.load("ENN_best_metric_model_segmentation3d_dict_step2.pth"))
+model.eval()
+
+
+###########################  RULES   #############################################
+
+PREDICTION_VALIDATION_SET = True
+#path_results = '/home/tongxue/huangling/code-hl/(IJAR)hl_medical-segmentation-master/result'
+path_results='/home/lab/hualing/(IJAR_new)hl_medical-segmentation-master/result_enn_kmeans'
+# generates folders
+
+if not os.path.exists(path_results):
+    os.makedirs(path_results)
+
+
+##################
+
+def PREDICT_MASK(data_set_ids, path_predictions, model):
+    # generates folder
+    if not os.path.exists(path_predictions):
+        os.makedirs(path_predictions)
+
+    filenames_predicted_masks = []
+    n_patients = len(val_ds)
+    val_loader = DataLoader(data_set_ids, batch_size=1, num_workers=4, collate_fn=list_data_collate)
+
+    metric_sum = 0.0
+    metric_sum_sen = 0.0
+    metric_sum_spe = 0.0
+    metric_sum_pre = 0.0
+
+    metric_count =0
+    os.chdir(r'/home/lab/hualing/(IJAR_new)hl_medical-segmentation-master/result_enn_kmeans')
+    # for i,data_set_id in enumerate(data_set_ids):
+    for i,val_data in enumerate(val_loader):
+        val_images, val_labels = val_data["image"].to(device), val_data["mask_img"].to(device)
+        prediction = model(val_images)
+
+        pm=prediction
+        #####save mass to .npy##########
+        mass_out=prediction.data.cpu().numpy()
+        name=splitext(basename(test_files[i]["mask_img"]))[0]
+        val_outputs = prediction[:, :2, :, :, :]+0.5*prediction[:, 2, :, :, :].unsqueeze(1)
+        np.save(name, mass_out)
+
+        #####save results to .nii##########
+        prediction = torch.argmax(prediction, axis=1)
+        prediction=prediction.permute(0,3,1,2)# output from a multiclass softmax
+        prediction = prediction.squeeze().cpu().numpy()
+        # conversion in unsigned int 8 to store mask with less memory requirement
+        mask = np.asarray(prediction, dtype=np.uint8)
+
+        new_filename = path_predictions + "/pred_" + splitext(basename(test_files[i]["mask_img"]))[0] + '.nii'
+        filenames_predicted_masks.append(new_filename)
+        sitk.WriteImage(sitk.GetImageFromArray(mask), new_filename)
+
+
+        ########calculate sen,spe,pre,acc,f1#########
+        value = dice_metric(y_pred=val_outputs, y=val_labels)
+
+        val_outputs=torch.argmax(pm, axis=1)
+        val_outputs=val_outputs.unsqueeze(1)
+
+        sensitivity = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
+                                                             metric_name='sensitivity')
+        specificity = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
+                                                             metric_name='specificity')
+
+        precision = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
+                                                           metric_name='precision')
+
+        print(len(value))
+        metric_count += len(value)
+        metric_sum += value.item() * len(value)
+        metric_sum_sen += sensitivity.item() * len(value)
+        metric_sum_spe += specificity.item() * len(value)
+        metric_sum_pre += precision.item() * len(value)
+
+
+    metric_dice = metric_sum / metric_count
+    metric_sen = metric_sum_sen / metric_count
+    metric_spe = metric_sum_spe / metric_count
+    metric_pre = metric_sum_pre / metric_count
+
+
+    print("dice:", metric_dice)
+    print("sen:", metric_sen)
+    print("spe",metric_spe)
+    print("pre",metric_pre)
+
+
+    return filenames_predicted_masks
+
+    ####################################################################################################
+
+###########################  Testing and visulation   #############################################
+
+if PREDICTION_VALIDATION_SET:
+    print("Prediction on validation set :")
+    # use to fine tune and evaluate model performances
+
+    print("Generating predictions :")
+    valid_prediction_ids = PREDICT_MASK(data_set_ids=test_ds,
+                                                 path_predictions=path_results + '/valid_predictions',
+                                                 model=model)
+    print("fini")
+

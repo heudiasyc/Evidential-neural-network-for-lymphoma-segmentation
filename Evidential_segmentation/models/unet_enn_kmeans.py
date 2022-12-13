@@ -138,7 +138,6 @@ class DsFunction1(torch.autograd.Function):
                 temp2[k]=-prototype_dim*test9*test7
                 Dinput[n, :] = temp2.mean(0)
 
-
         if ctx.needs_input_grad[0]:
             grad_input = Dinput
         if ctx.needs_input_grad[1]:
@@ -176,8 +175,7 @@ class Ds_kmeans(nn.Module):
     def forward(self, input):
         return DsFunction1.apply(input, self.W, self.BETA, self.alpha, self.gamma)
 
-
-class UNet_DS_Kmeans(nn.Module):
+class UNet_ENN_KMEANS(nn.Module):
     def __init__(
         self,
         dimensions: int,
@@ -264,8 +262,9 @@ class UNet_DS_Kmeans(nn.Module):
         #######Use for step 1 only#######
         for p in self.parameters():
             p.requires_grad=False
+        #######Use for step 1 only#######
 
-        self.ds1 = Ds_kmeans(2,10,2,W_p)
+        self.ds_kmeans = Ds_kmeans(2,10,2,W_p)
 
     def _get_down_layer(
         self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> Union[ResidualUnit, Convolution]:
@@ -352,10 +351,8 @@ class UNet_DS_Kmeans(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model(x)
-        mass=self.ds1(x.detach())
-        #mass=self.ds_kmeans(x)  ###use only for step 2
+        mass=self.ds_kmeans(x)  ###use only for step 2
         return mass
-
 
 W_p=np.loadtxt('./Center_kmeans.txt')
 W_p=torch.from_numpy(W_p)

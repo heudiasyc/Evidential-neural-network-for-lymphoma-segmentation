@@ -170,10 +170,6 @@ class Ds1(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        #with torch.no_grad():
-        #    self.W.copy_(W_p)
-        #nn.init.xavier_uniform_(self.W)
-        #nn.init.xavier_uniform_(self.BETA)
         nn.init.normal_(self.W)
         nn.init.normal_(self.BETA)
         nn.init.constant_(self.gamma, 0.1)
@@ -265,6 +261,9 @@ class UNet_ENN(nn.Module):
             return nn.Sequential(down, SkipConnection(subblock), up)
 
         self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
+
+        for p in self.parameters():
+            p.requires_grad=False
         self.ds1 = Ds1(2,10,2)
     def _get_down_layer(
         self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> Union[ResidualUnit, Convolution]:

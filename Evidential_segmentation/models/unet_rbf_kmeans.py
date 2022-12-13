@@ -75,12 +75,10 @@ class RBF_KMEANS(nn.Module):
 
         kapa_c=(1-torch.exp(-w_pc))*(1-torch.exp(-w_nc))
         kapa = 1 / (1 - kapa_c)
-        mass1=(1-torch.exp(-w_pc))*torch.exp(-w_nc)
-        mass1=kapa*mass1
-        mass2=(1-torch.exp(-w_nc))*torch.exp(-w_pc)
-        mass2=kapa*mass2
-        mass_omega=torch.exp(-w_pc-w_nc)
-        mass_omega=mass_omega*kapa
+        mass1=kapa*(1-torch.exp(-w_pc))*torch.exp(-w_nc)
+        mass2=kapa*(1-torch.exp(-w_nc))*torch.exp(-w_pc)
+        mass_omega=kapa*torch.exp(-w_pc-w_nc)
+
         mass_all = torch.cat((mass1.unsqueeze(1),mass2.unsqueeze(1),mass_omega.unsqueeze(1)), 1)
 
         return pm,mass_all
@@ -165,13 +163,13 @@ class UNet_RBF_KMEANS(nn.Module):
             up = self._get_up_layer(upc, outc, s, is_top)  # create layer in upsampling path
 
             return nn.Sequential(down, SkipConnection(subblock), up)
-            #return nn.Sequential(down, SkipConnection(subblock))
 
         self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
 
-        #######Use for step 1 only#######
+        #######Use for step 1 only，otherwise deactivate it #######
         for p in self.parameters():
             p.requires_grad=False
+        #######Use for step 1 only#######
 
         self.rbf_kmeans = RBF_KMEANS(2,2,10,prototype)
 
@@ -262,8 +260,7 @@ class UNet_RBF_KMEANS(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model(x)
-        pm,mass=self.rbf(x.detach())
-        #pm,mass=self.rbf_kmeans(x)   ###use only for step 2####@
+        pm,mass=self.rbf_kmeans(x)
         return pm,mass
 
 W_p=np.loadtxt('./Center_kmeans.txt')

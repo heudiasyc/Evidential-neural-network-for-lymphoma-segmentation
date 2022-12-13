@@ -80,9 +80,9 @@ val_transforms = Compose(
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 base_path="/home/lab/hualing/2.5_SUV_dilation" #####the path you put the pre_processed data.
-pet_path = base_path + '/' + 'pet'
-ct_path = base_path + '/' + 'ct'
-mask_path = base_path + '/' + 'pet_mask'
+pet_path = base_path + '/' + 'pet_test'
+ct_path = base_path + '/' + 'ct_test'
+mask_path = base_path + '/' + 'pet_test_mask'
 PET_ids = sorted(glob(os.path.join(pet_path, '*pet.nii')))
 CT_ids = sorted(glob(os.path.join(ct_path, '*ct.nii')))
 MASK_ids = sorted(glob(os.path.join(mask_path, '*mask.nii')))
@@ -113,27 +113,32 @@ test_loader = DataLoader(test_ds, batch_size=1, num_workers=4, collate_fn=list_d
 
 
 
-trained_model_path=None
-if trained_model_path is None:
-    # GENERATE NEW MODEL
-    model = UNet_ENN(
+trained_model_path="./pre-trained_model/best_metric_model_unet.pth"      ######path to the pretrained UNet model
+model = UNet_ENN(
         dimensions=3,  # 3D
         in_channels=2,
         out_channels=2,
         kernel_size=5,
         channels=(8,16, 32, 64,128),
         strides=(2, 2, 2, 2),
-        num_res_units=2,
-    ).to(device)
+        num_res_units=2,).to(device)
+model_dict = model.state_dict()
+pre_dict = torch.load(trained_model_path)
+pre_dict = {k: v for k, v in pre_dict.items() if k in model_dict}
+model_dict.update(pre_dict)
 
-else:
-    # LOAD MODEL FROM .h5 FILE
-    model=model.load_state_dict(torch.load(trained_model_path))
+model.load_state_dict(model_dict)
 
 
+####code to make sure only the parameters from ENN are optimized
 
-optimizer = torch.optim.Adam(model.parameters(), 1e-3)
+for name, param in model.named_parameters():
+    if param.requires_grad==True:
+        print(name)
+####code to make sure only the parameters from ENN are optimized
 
+params = filter(lambda p: p.requires_grad, model.parameters())
+optimizer = torch.optim.Adam(params, 1e-2)
 dice_metric = monai.metrics.DiceMetric( include_background=False,reduction="mean")
 scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min',patience=10)
 loss_function = monai.losses.DiceLoss(include_background=False,softmax=False,squared_pred=True,to_onehot_y=True)
@@ -148,9 +153,6 @@ epoch_loss_values = list()
 metric_values = list()
 
 writer = SummaryWriter()
-post_pred = AsDiscrete(argmax=True, to_onehot=True, n_classes=2)
-post_label = AsDiscrete(to_onehot=True, n_classes=2)
-
 
 
 for epoch in range(100):
@@ -163,13 +165,10 @@ for epoch in range(100):
         step += 1
         inputs, labels = batch_data["image"].to(device), batch_data["mask_img"].to(device)
         optimizer.zero_grad()
-        outputs,feature = model(inputs)
+        outputs = model(inputs)
 
         output=outputs[:, :2, :, :, :]+0.5*outputs[:, 2, :, :, :].unsqueeze(1)
-        dice_loss=loss_function(output, labels)
-
-
-        loss = dice_loss
+        loss=loss_function(output, labels)
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
@@ -186,12 +185,9 @@ for epoch in range(100):
             metric_sum = 0.0
             metric_count = 0
 
-            val_images = None
-            val_labels = None
-            val_outputs = None
             for val_data in val_loader:
                 val_images, val_labels = val_data["image"].to(device), val_data["mask_img"].to(device)
-                output,feature = model(val_images)
+                output = model(val_images)
                 val_outputs = output[:, :2, :, :, :]+0.5*output[:, 2, :, :, :].unsqueeze(1)
                 value = dice_metric(y_pred=val_outputs, y=val_labels)
                 metric_count += len(value)
@@ -213,121 +209,3 @@ for epoch in range(100):
 
 print(f"train completed, best_metric: {best_metric:.4f} at epoch: {best_metric_epoch}")
 writer.close()
-
-
-# LEARNING PROCEDURE
-
-start_tt = time.time()
-labels_names = ['Background','Lymphoma',]
-labels_numbers = [0,1]
-
-
-model.load_state_dict(torch.load("ENN_best_metric_model_segmentation3d_dict.pth"))
-model.eval()
-
-
-###########################  Test   #############################################
-
-PREDICTION_VALIDATION_SET = True
-
-path_results='/home/lab/hualing/(IJAR_new)hl_medical-segmentation-master/result_enn'
-# generates folders
-
-if not os.path.exists(path_results):
-    os.makedirs(path_results)
-
-
-##################
-
-def PREDICT_MASK(data_set_ids, path_predictions, model):
-    # generates folder
-    if not os.path.exists(path_predictions):
-        os.makedirs(path_predictions)
-
-    filenames_predicted_masks = []
-    val_loader = DataLoader(data_set_ids, batch_size=1, num_workers=4, collate_fn=list_data_collate)
-
-    metric_sum = 0.0
-    metric_sum_sen = 0.0
-    metric_sum_spe = 0.0
-    metric_sum_pre = 0.0
-
-    metric_count =0
-    os.chdir(r'/home/lab/hualing/(IJAR_new)hl_medical-segmentation-master/result_enn')
-
-    for i,val_data in enumerate(val_loader):
-        val_images, val_labels = val_data["image"].to(device), val_data["mask_img"].to(device)
-        prediction,feature = model(val_images)
-
-        pm=prediction
-
-        #####save  mass value  to .npy##########
-        name=splitext(basename(test_files[i]["mask_img"]))[0]
-        mass_out=prediction.data.cpu().numpy()
-        val_outputs = prediction[:, :2, :, :, :]+0.5*prediction[:, 2, :, :, :].unsqueeze(1)
-        np.save(name, mass_out)
-
-        #####save 2D features to .npy##########
-        namef='f'+name
-        feature_out=feature.data.cpu().numpy()
-        np.save(namef, feature_out)
-
-        #####save results to .nii##########
-        prediction = torch.argmax(prediction, axis=1)
-
-        prediction=prediction.permute(0,3,1,2)#
-        prediction = prediction.squeeze().cpu().numpy()
-        # conversion in unsigned int 8 to store mask with less memory requirement
-        mask = np.asarray(prediction, dtype=np.uint8)
-
-        new_filename = path_predictions + "/pred_" + splitext(basename(test_files[i]["mask_img"]))[0] + '.nii'
-        filenames_predicted_masks.append(new_filename)
-        sitk.WriteImage(sitk.GetImageFromArray(mask), new_filename)
-
-
-        ########calculate sen,spe,pre#########
-        value = dice_metric(y_pred=val_outputs, y=val_labels)
-        val_outputs=torch.argmax(pm, axis=1)
-        val_outputs=val_outputs.unsqueeze(1)
-
-        sensitivity = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
-                                                             metric_name='sensitivity')
-        specificity = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
-                                                             metric_name='specificity')
-        precision = monai.metrics.compute_confusion_metric(y_pred=val_outputs, y=val_labels, to_onehot_y=False,
-                                                           metric_name='precision')
-
-        print(len(value))
-        metric_count += len(value)
-        metric_sum += value.item() * len(value)
-        metric_sum_sen += sensitivity.item() * len(value)
-        metric_sum_spe += specificity.item() * len(value)
-        metric_sum_pre += precision.item() * len(value)
-
-    metric_dice = metric_sum / metric_count
-    metric_sen = metric_sum_sen / metric_count
-    metric_spe = metric_sum_spe / metric_count
-    metric_pre = metric_sum_pre / metric_count
-
-    print("dice:", metric_dice)
-    print("sen:", metric_sen)
-    print("spe",metric_spe)
-    print("pre",metric_pre)
-
-
-    return filenames_predicted_masks
-
-    ####################################################################################################
-
-###########################  Testing and visulation   #############################################
-
-if PREDICTION_VALIDATION_SET:
-    print("Prediction on validation set :")
-    # use to fine tune and evaluate model performances
-
-    print("Generating predictions :")
-    valid_prediction_ids = PREDICT_MASK(data_set_ids=test_ds,
-                                                 path_predictions=path_results + '/valid_predictions',
-                                                 model=model)
-    print("fini")
-
