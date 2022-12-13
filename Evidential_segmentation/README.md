@@ -23,12 +23,12 @@ Copy the models from ./models into ./monai/networks/net
      ES-UNet
       |---ENN-UNET
       |    |---TRAINING-ENN.py
-      |    |---TRAINING-ENN_(step1).py
-      |    |---TRAINING-ENN_(step2).py
+      |    |---TRAINING-ENN_step1.py
+      |    |---TRAINING-ENN_step2.py
       |---RBF-UNET
       |    |---TRAINING-RBF.py
-      |    |---TRAINING-RBF_(step1).py
-      |    |---TRAINING-RBF_(step2).py
+      |    |---TRAINING-RBF_step1.py
+      |    |---TRAINING-RBF_step2.py
       |---pretrained_ckpt
       |---saved_model
       ...
@@ -59,12 +59,12 @@ python TRAINING-ENN.py
 - Third, change to the path to the pre-trained baseline model UNet in TRAINING-ENN_(step1).py  (line 109)
 - Fourth, run following code to train the ENN layer only by fixing UNet (activate lines 263-264 in une_enn_kmeans.py).
 ```bash
-python TRAINING-ENN_(step1).py
+python TRAINING-ENN_step1.py
 ```
 - Last, run following code to finetune the whole model with the pre-trained model obtained from step 1 (deactivate lines 263-264 in une_enn_kmeans.py to disable gradient update for Unet).   
 
 ```bash
-python TRAINING-ENN_(step2).py
+python TRAINING-ENN_step2.py
 ```
 
 ## Acknowledgements
