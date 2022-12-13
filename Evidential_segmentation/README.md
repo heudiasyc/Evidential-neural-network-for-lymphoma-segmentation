@@ -34,11 +34,11 @@ Copy the models from ./models into ./monai/networks/net
       ...
     ```
 
-## Pre-Trained Weights of UNET
+## Pre-Trained baseline model: UNET
 - UNET: 
 - Download the pre-trained UNet model and put it under ./pre-trained_model folder
 
-## Pre-Trained Base Model For LYMPHOMA
+## Pre-Trained ENN_UNet and RBF-UNet
 - ENN-UNet: 
 - Download the pre-trained ENN-UNet model and put it under ./pre-trained_model folder
 
@@ -48,18 +48,18 @@ Copy the models from ./models into ./monai/networks/net
 
 
 
-## Train UNet_ENN with random initialization (same for UNet_RBF)
+## Train ENN_UNet with random initialization (same for RBF_UNet)
 - First, we need to pre-trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model folder)
 - Second, change to the path to the pre-trained baseline model UNet in TRAINING-ENN.py (line 116)
-- Third, run the following code to train UNet_ENN. 
+- Third, run the following code to train ENN_UNet. 
 ```bash
 python TRAINING-ENN.py
 ```
 
-## Train UNet_ENN_KMEANS with k-means initialization (same for UNet_RBF_KMEANS).
+## Train ENN_UNet_KMEANS with k-means initialization (same for RBF_UNet_KMEANS).
 - First, we need to pre-trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model/ folder)
 - Second, we use the pre-trained UNet to calculate the initialized value of prototypes by the k-means algorithm. (Here, we offer an initialization value of prototypes that are calculted by K-means, ./Center-kmeans.txt)
-- Third, run TRAINING-ENN_(step1).py to train the ENN layer only by fixing UNEt (activate lines 263-264 in une_enn_kmeans.py).
+- Third, run TRAINING-ENN_(step1).py to train the ENN layer only by fixing UNet (activate lines 263-264 in une_enn_kmeans.py).
 ```bash
 python TRAINING-ENN_(step1).py
 ```
