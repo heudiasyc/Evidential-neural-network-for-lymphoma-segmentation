@@ -8,9 +8,8 @@ Prepare an environment with python=3.7, and then run the command "pip install -r
 Copy the models from ./models into ./monai/networks/net
 
 ## Data Preparation
-- For experiments we used LYMPHOMA dataset.
-- Users can can prapare their own dataset according and put the data into follow files 
-
+- We used a 3D PET-CT LYMPHOMA dataset to test your model.
+- Users can prepare their own dataset and put the data according to the following file structure:
 - File structure
     ```
      LYMPHOMA
@@ -37,37 +36,37 @@ Copy the models from ./models into ./monai/networks/net
 
 ## Pre-Trained Weights of UNET
 - UNET: 
-- Download UNet pre-trained weights of UNet and put it under ./pre-trained_model folder
+- Download the pre-trained UNet model and put it under ./pre-trained_model folder
 
 ## Pre-Trained Base Model For LYMPHOMA
 - ENN-UNet: 
-- Download ENN-UNet pre-trained model and put it under ./pre-trained_model folder
+- Download the pre-trained ENN-UNet model and put it under ./pre-trained_model folder
 
 - RBF-UNet: 
-- Download RBF-UNet pre-trained model and put it under ./pre-trained_model main folder
+- Download the pre-trained RBF-UNet model and put it under ./pre-trained_model main folder
 
 
 
 
 ## Train UNet_ENN with random initialization (same for UNet_RBF)
-- To train the whole model with random initialization, first, we need to pre-trained baseline model UNet. (Here we offer a pretrained UNet baseline model in ./pre-trained_model folder)
-- Change to path to the pretrained baseline model Unet in TRAINING-ENN.py (line 116)
-- Run the following code to train UNet_ENN. 
+- First, we need to pre-trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model folder)
+- Second, change to the path to the pre-trained baseline model UNet in TRAINING-ENN.py (line 116)
+- Third, run the following code to train UNet_ENN. 
 ```bash
 python TRAINING-ENN.py
 ```
 
 ## Train UNet_ENN_KMEANS with k-means initialization (same for UNet_RBF_KMEANS).
-- To train the whole model with k-means initialization, first, we need to pre-trained baseline model UNet. (Here we offer a pretrained UNet baseline model in ./pre-trained_model/ folder)
-_ Second we use the pre-trained UNet to calculate the initialize value of prototypes by k-means algorithom. (Here we offer a initialization value of prototypes that calculted by K-means, ./Center-kmeans.txt)
-- Third run TRAINING-ENN_(step1).py to train the RBF/ENN layer only by fixing UNEt. 
+- First, we need to pre-trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model/ folder)
+- Second, we use the pre-trained UNet to calculate the initialized value of prototypes by the k-means algorithm. (Here, we offer an initialization value of prototypes that are calculted by K-means, ./Center-kmeans.txt)
+- Third, run TRAINING-ENN_(step1).py to train the ENN layer only by fixing UNEt (activate lines 263-264 in une_enn_kmeans.py).
 ```bash
 python TRAINING-ENN_(step1).py
 ```
-- Last run TRAINING-ENN_(step2).py to finetune the whole model with the pre-trained model on step 1.   
+- Fourth, run TRAINING-ENN_(step2).py to finetune the whole model with the pre-trained model from step 1 (activate lines 263-264 in une_enn_kmeans.py to disable gradient updation for Unet).   
 
 ```bash
-python TRAINING-ENN_(step2).py
+python TRAINING-ENN_(step2).py (nute lines 263-264 in une-enn-kmeans.py to enable gradient updation). 
 ```
 
 ## Acknowledgements
