@@ -30,18 +30,18 @@ Copy the models from ./models into ./monai/networks/net
      ES-UNet
       |---ENN-UNET
       |    |---TRAINING-ENN.py
-      |    |---TRAINING-ENN_(step1).py
-      |    |---TRAINING-ENN_(step2).py
+      |    |---TRAINING-ENN_step1.py
+      |    |---TRAINING-ENN_step2.py
       |---RBF-UNET
       |    |---TRAINING-RBF.py
-      |    |---TRAINING-RBF_(step1).py
-      |    |---TRAINING-RBF_(step2).py
+      |    |---TRAINING-RBF_step1.py
+      |    |---TRAINING-RBF_step2.py
       |---pretrained_ckpt
       |---saved_model
       ...
     ```
 
-## Pre-Trained Weights of UNET
+## Pre-Trained model 
 - UNET: 
 - Download UNet pre-trained weights of UNet and add it under ./pre-trained_model folder
 
@@ -55,20 +55,26 @@ Copy the models from ./models into ./monai/networks/net
 
 
 
-## Train/Test with random initialization
-- Random initialization: Run the train script on LYMPHOMA Dataset end-to-end. 
+## Train ENN-UNet with random initialization (the same for RBF-UNet):
+-  First, train a baseline UNet model (here we provide a pretained baseline UNet model in ./pre-trained_model/ )
+-  Second, indicate the path to the pre-traind UNet model (TRAINING-ENN.py line 116)
+-  Third, run the following code to train ENN-UNet
 ```bash
 python TRAINING-ENN.py
 ```
 
-## Train/Test with k-means initialization  
-
-- First run TRAINING-ENN_step1.py to train the RBF/ENN layer only by fixing UNEt.
-- Then run TRAINING-ENN_step2.py to finetune the whole model with the pre-trained model on step 1.  
+## Train ENN-UNet with k-means initialization (the same for RBF-UNet):
+- First, train a baseline UNet model (here we provide a pretained baseline UNet model in ./pre-trained_model/ )
+- Second, indicate the path to the pre-traind UNet model (TRAINING-ENN_step1.py line 109)
+- Third, run the following code to train ENN by fixing UNet (activate lines 265-266 in unet_enn.py)
 ```bash
 python TRAINING-ENN_step1.py
+```
+- Last, run the following code finetune the whole model (ENN-UNet). ((activate lines 265-266 in unet_enn.py)
+```bash
 python TRAINING-ENN_step2.py
 ```
+## PS, python TRAINING-ENN_step2.py is not necessary if TRAINING-ENN_step2.py can already output good results. But a final finetuning of the whold model usually have better results 
 
 ## Acknowledgements
 This repository makes liberal use of code from [DeepOncology](https://github.com/rnoyelle/DeepOncology) for lymphoma data processing.
