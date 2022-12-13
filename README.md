@@ -1,8 +1,7 @@
 # Evidential-neural-network-for-lymphoma-segmentation
 Code for paper "Lymphoma segmentation from 3D PET-CT images using a deep evidential network"
 
-## Abstract
-A reasonable and reliable quantification of segmentation uncertainty is important to optimize the segmentation framework and further improve performance. In this work, an automatic evidential segmentation model based on BFT and deep learning is proposed to segment lymphomas from 3D PET-CT images, which not only focuses on lymphoma segmentation accuracy but also on uncertainty quantification using belief functions. 
+Abstract: A reasonable and reliable quantification of segmentation uncertainty is important to optimize the segmentation framework and further improve performance. In this work, an automatic evidential segmentation model based on BFT and deep learning is proposed to segment lymphomas from 3D PET-CT images, which not only focuses on lymphoma segmentation accuracy but also on uncertainty quantification using belief functions. 
 
 
 # ES-UNet
