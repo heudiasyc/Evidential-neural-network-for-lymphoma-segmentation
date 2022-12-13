@@ -1,10 +1,12 @@
 # Evidential-neural-network-for-lymphoma-segmentation
 Code for paper "Lymphoma segmentation from 3D PET-CT images using a deep evidential network"
 
+## Abstract
+A reasonable and reliable quantification of segmentation uncertainty is important to optimize the segmentation framework and further improve performance. In this work, an automatic evidential segmentation model based on BFT and deep learning is proposed to segment lymphomas from 3D PET-CT images, which not only focuses on lymphoma segmentation accuracy but also on uncertainty quantification using belief functions. 
 
 
 # ES-UNet
-This repo contains the supported pytorch code and configuration files to reproduce 3D lymphoma segmentaion results of [ENN-UNet and RBF-UNet](https://arxiv.org/abs/2201.13078). 
+This repo contains the supported pytorch code and configuration files to reproduce 3D lymphoma segmentaion results of [ENN-UNet and RBF-UNet](https://www.sciencedirect.com/science/article/pii/S0888613X22000962). 
 
 
 ## Environment
@@ -47,25 +49,26 @@ Copy the models from ./models into ./monai/networks/net
 
 
 ## Train ENN-UNet with random initialization (the same for RBF-UNet):
--  First, train a baseline UNet model (here we provide a pretained baseline UNet model in ./pre-trained_model/ )
--  Second, indicate the path to the pre-traind UNet model (TRAINING-ENN.py line 116)
+-  First, train a baseline UNet model (here we provide a pre-trained baseline UNet model in ./pre-trained_model/ )
+-  Second, indicate the path to the pre-trained UNet model (TRAINING-ENN.py line 116)
 -  Third, run the following code to train ENN-UNet
 ```bash
 python TRAINING-ENN.py
 ```
 
 ## Train ENN-UNet with k-means initialization (the same for RBF-UNet):
-- First, train a baseline UNet model (here we provide a pretained baseline UNet model in ./pre-trained_model/ )
-- Second, indicate the path to the pre-traind UNet model (TRAINING-ENN_step1.py line 109)
+- First, train a baseline UNet model (here we provide a pre-trained baseline UNet model in ./pre-trained_model/ )
+- Second, indicate the path to the pre-trained UNet model (TRAINING-ENN_step1.py line 109)
 - Third, run the following code to train ENN-UNet by fixing UNet (activate lines 265-266 in unet_enn.py)
 ```bash
 python TRAINING-ENN_step1.py
 ```
-- Last, run the following code finetune the whole model (ENN-UNet). ((activate lines 265-266 in unet_enn.py)
+- Last, run the following code to finetune the whole model (ENN-UNet). ((activate lines 265-266 in unet_enn.py)
 ```bash
 python TRAINING-ENN_step2.py
 ```
-- PS: TRAINING-ENN_step2.py is not necessary if TRAINING-ENN_step2.py can already output good results. But a final finetuning of the whold model usually have better results 
+- PS: TRAINING-ENN_step2.py is optional if TRAINING-ENN_step1.py can output good results. But a final finetuning of the whole model usually has better results.
+
 
 ## Acknowledgements
 This repository makes liberal use of code from [DeepOncology](https://github.com/rnoyelle/DeepOncology) for lymphoma data processing.
