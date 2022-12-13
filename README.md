@@ -8,14 +8,14 @@ This repo contains the supported pytorch code and configuration files to reprodu
 
 
 ## Environment
-Prepare an environment with python=3.7, and then run the command "pip install -r requirements.txt" for the dependencies.
+Prepare an python environment with python=3.7, and then run the command "pip install -r requirements.txt" for the dependencies.
 
 ## models 
 Copy the models from ./models into ./monai/networks/net
 
 ## Data Preparation
-- For experiments we used LYMPHOMA dataset.
-- Users can can prapare their own dataset according and put the data into follow files 
+- We use 3D PET-CT LYMPHOMA dataset to test our model.
+- Users can prepare their own dataset and organize their data according to the following file structure.
 
 - File structure
     ```
@@ -36,22 +36,13 @@ Copy the models from ./models into ./monai/networks/net
       |    |---TRAINING-RBF.py
       |    |---TRAINING-RBF_step1.py
       |    |---TRAINING-RBF_step2.py
-      |---pretrained_ckpt
+      |---pretrained_model
       |---saved_model
       ...
     ```
 
-## Pre-Trained model 
-- UNET: 
-- Download UNet pre-trained weights of UNet and add it under ./pre-trained_model folder
-
-## Pre-Trained Base Model For LYMPHOMA
-- ENN-UNet: 
-- Download ENN-UNet pre-trained model and add it under ./pre-trained_model folder
-
-- RBF-UNet: 
-- Download RBF-UNet pre-trained model and add it under ./pre-trained_model main folder
-
+## Pre-Trained Unet model 
+- UNET: The pre-trained baseline model UNet is put in ./pre-trained_model/best_metric_model_unet.pth
 
 
 
@@ -66,7 +57,7 @@ python TRAINING-ENN.py
 ## Train ENN-UNet with k-means initialization (the same for RBF-UNet):
 - First, train a baseline UNet model (here we provide a pretained baseline UNet model in ./pre-trained_model/ )
 - Second, indicate the path to the pre-traind UNet model (TRAINING-ENN_step1.py line 109)
-- Third, run the following code to train ENN by fixing UNet (activate lines 265-266 in unet_enn.py)
+- Third, run the following code to train ENN-UNet by fixing UNet (activate lines 265-266 in unet_enn.py)
 ```bash
 python TRAINING-ENN_step1.py
 ```
@@ -74,7 +65,7 @@ python TRAINING-ENN_step1.py
 ```bash
 python TRAINING-ENN_step2.py
 ```
-## PS, python TRAINING-ENN_step2.py is not necessary if TRAINING-ENN_step2.py can already output good results. But a final finetuning of the whold model usually have better results 
+- PS: TRAINING-ENN_step2.py is not necessary if TRAINING-ENN_step2.py can already output good results. But a final finetuning of the whold model usually have better results 
 
 ## Acknowledgements
 This repository makes liberal use of code from [DeepOncology](https://github.com/rnoyelle/DeepOncology) for lymphoma data processing.
