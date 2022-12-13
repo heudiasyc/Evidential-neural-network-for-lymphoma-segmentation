@@ -46,7 +46,7 @@ Copy the models from ./models into ./monai/networks/net
 
 
 ## Train ENN_UNet with random initialization (same for RBF_UNet)
-- First, we need to trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model folder)
+- First, we need to train a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model folder)
 - Second, change to the path to the pre-trained baseline model UNet in TRAINING-ENN.py (line 116)
 - Third, run the following code to train ENN_UNet. 
 ```bash
@@ -54,14 +54,14 @@ python TRAINING-ENN.py
 ```
 
 ## Train ENN_UNet_KMEANS with k-means initialization (same for RBF_UNet_KMEANS).
-- First, we need to trained a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model/ folder)
+- First, we need to train a baseline model UNet. (Here, we offer a pre-trained UNet baseline model in ./pre-trained_model/ folder)
 - Second, we use the pre-trained UNet to calculate the initialized value of prototypes by the k-means algorithm. (Here, we offer an initialization value of prototypes that are calculted by K-means, ./Center-kmeans.txt)
 - Third, change to the path to the pre-trained baseline model UNet in TRAINING-ENN_(step1).py  (line 109)
 - Fourth, run following code to train the ENN layer only by fixing UNet (activate lines 263-264 in une_enn_kmeans.py).
 ```bash
 python TRAINING-ENN_(step1).py
 ```
-- Last, run following code to finetune the whole model with the pre-trained model from step 1 (deactivate lines 263-264 in une_enn_kmeans.py to disable gradient update for Unet).   
+- Last, run following code to finetune the whole model with the pre-trained model obtained from step 1 (deactivate lines 263-264 in une_enn_kmeans.py to disable gradient update for Unet).   
 
 ```bash
 python TRAINING-ENN_(step2).py
